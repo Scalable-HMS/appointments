@@ -1,0 +1,22 @@
+name: Publish Prod Docker image
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  push_to_prod_registry:
+    name: Push Docker image to GCR Prod
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v2
+      - uses: google-github-actions/setup-gcloud@v0
+      - uses: RafikFarhad/push-to-gcr-github-action@v4
+        with:
+          gcloud_service_key: ${{ secrets.GCLOUD_SERVICE_KEY }}
+          registry: gcr.io
+          project_id: robust-heaven-344812
+          image_name: appointments-production
+          dockerfile: ./Dockerfile.prod
