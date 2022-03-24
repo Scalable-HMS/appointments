@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -16,10 +17,10 @@ type Appointment struct {
 }
 
 type CreateAppointmentInput struct {
-	DoctorId    uint      `json:"doctor_id" binding:"required"`
-	PatientId   uint      `json:"patient_id" binding:"required"`
-	Agenda      string    `json:"agenda" binding:"required"`
-	DateAndTime time.Time `json:"date_time" binding:"required"`
+	DoctorId    uint   `json:"doctor_id" binding:"required"`
+	PatientId   uint   `json:"patient_id" binding:"required"`
+	Agenda      string `json:"agenda" binding:"required"`
+	DateAndTime string `json:"date_time" binding:"required"`
 }
 
 type UpdateAppointmentInput struct {
@@ -38,11 +39,36 @@ func FindAppointments(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": appointments})
 }
 
+func getRawAppointmentWithPatientID(id uint) models.Appointment {
+	appointment := models.Appointment{}
+	appointment.PatientId = id
+	return appointment
+}
+
 // GET /appointments/:id
 // Find a appointment
 func FindAppointment(c *gin.Context) {
 	// Get model if exist
+
+	patientID, _ := strconv.ParseUint(c.Query("patient_id"), 10, 64)
+	doctorID, _ := strconv.ParseUint(c.Query("doctor_id"), 10, 64)
+
 	var appointment models.Appointment
+
+	if c.Param("role") == "Patient" {
+		if err := models.DB.Where(getRawAppointmentWithPatientID(uint(patientID))).Find(&appointment).Error; err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Record not found!"})
+			return
+		}
+	}
+
+	if c.Param("role") == "Doctor" {
+		if err := models.DB.Where(getRawAppointmentWithPatientID(uint(doctorID))).Find(&appointment).Error; err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Record not found!"})
+			return
+		}
+	}
+
 	if err := models.DB.Where("id = ?", c.Param("id")).First(&appointment).Error; err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Record not found!"})
 		return
@@ -62,7 +88,7 @@ func CreateAppointment(c *gin.Context) {
 	}
 
 	// Create appointment
-	appointment := models.Appointment{DoctorId: input.DoctorId, PatientId: input.PatientId, DateAndTime: input.DateAndTime, Agenda: input.Agenda}
+	appointment := models.Appointment{DoctorId: input.DoctorId, PatientId: input.PatientId, DateAndTime: time.Now(), Agenda: input.Agenda}
 	models.DB.Create(&appointment)
 
 	c.JSON(http.StatusOK, gin.H{"data": appointment})
