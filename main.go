@@ -98,4 +98,7 @@ func main() {
 	secureGroup.PATCH("/appointment", controllers.UpdateAppointment)
 	secureGroup.DELETE("/appointment", controllers.DeleteAppointment)
 
+	// Run the server
+	r.Run()
+
 }
