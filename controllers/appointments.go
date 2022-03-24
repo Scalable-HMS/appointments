@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -18,7 +19,6 @@ type Appointment struct {
 
 type CreateAppointmentInput struct {
 	DoctorId    uint   `json:"doctor_id" binding:"required"`
-	PatientId   uint   `json:"patient_id" binding:"required"`
 	Agenda      string `json:"agenda" binding:"required"`
 	DateAndTime string `json:"date_time" binding:"required"`
 }
@@ -36,7 +36,7 @@ func FindAppointments(c *gin.Context) {
 	var appointments []models.Appointment
 	models.DB.Find(&appointments)
 
-	c.JSON(http.StatusOK, gin.H{"data": appointments})
+	c.JSON(http.StatusOK, appointments)
 }
 
 func getRawAppointmentWithPatientID(id uint) models.Appointment {
@@ -88,10 +88,12 @@ func CreateAppointment(c *gin.Context) {
 	}
 
 	// Create appointment
-	appointment := models.Appointment{DoctorId: input.DoctorId, PatientId: input.PatientId, DateAndTime: time.Now(), Agenda: input.Agenda}
+	str, _ := strconv.ParseUint(c.Param("id"), 10, 64)
+	fmt.Println(uint(str))
+	appointment := models.Appointment{DoctorId: input.DoctorId, PatientId: uint(str), DateAndTime: time.Now(), Agenda: input.Agenda}
 	models.DB.Create(&appointment)
 
-	c.JSON(http.StatusOK, gin.H{"data": appointment})
+	c.JSON(http.StatusOK, appointment)
 }
 
 // PATCH /appointments/:id
