@@ -1,0 +1,19 @@
+name: Docker Image scan
+
+on:
+  pull_request:
+    branches:
+      - main
+      - dev
+
+jobs:
+  build-secure:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - run: docker build -f ./Dockerfile.prod -t appointments:${{ github.sha }} .
+      
+    - uses: Azure/container-scan@v0
+      with:
+        image-name: appointments:${{ github.sha }}
