@@ -3,6 +3,11 @@ package main
 import (
 	"log"
 	"time"
+		"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"net/http"
+
 
 	"github.com/getsentry/sentry-go"
 	"github.com/wryonik/appointment/controllers"
@@ -10,6 +15,63 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
+
+type Response struct {
+	Role  string `json:"given_name"`
+	Email string `json:"email"`
+	Id    string `json:"nickname"`
+}
+
+func authMid(c *gin.Context) {
+
+	url := "https://dev-rgmfg73e.us.auth0.com/userinfo"
+	method := "GET"
+
+	client := &http.Client{}
+	req, err := http.NewRequest(method, url, nil)
+
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	req.Header.Add("Authorization", c.Request.Header["Authorization"][0])
+
+	res, err := client.Do(req)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer res.Body.Close()
+
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	response := Response{}
+	json.Unmarshal(body, &response)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(response.Email)
+	fmt.Println(response.Role)
+	fmt.Println(response.Id)
+	c.Params = []gin.Param{
+		{
+			Key:   "email",
+			Value: response.Email,
+		},
+		{
+			Key:   "role",
+			Value: response.Role,
+		},
+		{
+			Key:   "id",
+			Value: response.Id,
+		},
+		
+	}
+}
 
 func main() {
 	err := sentry.Init(sentry.ClientOptions{
@@ -28,12 +90,15 @@ func main() {
 	// Connect to database
 	models.ConnectDatabase()
 
+	secureGroup := r.Group("/secure/", authMid)
+
 	// Routes
-	r.GET("/appointment", controllers.FindAppointments)
-	r.POST("/appointment", controllers.CreateAppointment)
-	r.PATCH("/appointment", controllers.UpdateAppointment)
-	r.DELETE("/appointment", controllers.DeleteAppointment)
+	secureGroup.GET("/appointment", controllers.FindAppointments)
+	secureGroup.POST("/appointment", controllers.CreateAppointment)
+	secureGroup.PATCH("/appointment", controllers.UpdateAppointment)
+	secureGroup.DELETE("/appointment", controllers.DeleteAppointment)
 
 	// Run the server
 	r.Run()
+
 }
