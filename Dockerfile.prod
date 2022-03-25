@@ -1,34 +1,9 @@
-# syntax=docker/dockerfile:1
-
-##
-## Build
-##
-FROM golang:1.16-buster AS build
-
+FROM golang:alpine as builder
+RUN mkdir /build 
+ADD src /build/
+WORKDIR /build 
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags '-extldflags "-static"' -o main .
+FROM busybox
+COPY --from=builder /build/main /app/
 WORKDIR /app
-
-COPY go.mod ./
-COPY go.sum ./
-RUN go mod download
-
-COPY controllers controllers/
-COPY models/ models/
-COPY main.go ./
-
-RUN go build -o /appointments
-
-##
-## Deploy
-##
-## https://sysdig.com/blog/dockerfile-best-practices/
-FROM gcr.io/distroless/static-debian10
-
-USER nonroot:nonroot
-
-COPY --from=build /appointments /appointments
-
-EXPOSE 8080
-
-ENV GIN_MODE=release
-
-ENTRYPOINT ["/appointments"]
+CMD ["./main"]
